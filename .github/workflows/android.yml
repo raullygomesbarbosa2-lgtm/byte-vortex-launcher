@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Byte Vortex Launcher APK
 on:
   push:
     branches: [main]
@@ -14,16 +14,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-      - name: Build debug APK
-        run: gradle assembleDebug
+      - name: Install Gradle
+        run: |
+          curl -L https://services.gradle.org/distributions/gradle-8.7-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+      - name: Build APK
+        run: /tmp/gradle-8.7/bin/gradle --no-daemon assembleDebug
       - name: Publish APK release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: launcher-build-1
-          name: Byte Vortex Launcher APK
-          body: Android 6.0+ (API 23). Debug build, assinatura temporária de CI.
+          tag_name: byte-vortex-launcher-v1-1
+          name: Byte Vortex Launcher v1.1
+          make_latest: true
           files: app/build/outputs/apk/debug/app-debug.apk
-          fail_on_unmatched_files: true
