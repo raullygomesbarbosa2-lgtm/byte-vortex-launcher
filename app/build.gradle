@@ -3,11 +3,10 @@ plugins { id 'com.android.application' }
 android {
     namespace 'com.vortex.launcher'
     compileSdk 35
-
     defaultConfig {
         applicationId 'com.vortex.launcher'
         minSdk 23
-        targetSdk 35
+        targetSdk 28
         versionCode 1
         versionName '1.0'
     }
