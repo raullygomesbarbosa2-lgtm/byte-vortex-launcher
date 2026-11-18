@@ -1,158 +1,93 @@
 package com.vortex.launcher;
 
 import android.app.Activity;
-import android.os.Bundle;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
-import android.widget.*;
+import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.widget.BaseAdapter;
+import android.widget.EditText;
+import android.widget.GridView;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends Activity {
-    private LinearLayout appGrid;
-    private final int cyan = Color.rgb(0, 229, 255);
+    private final int bg = Color.rgb(8, 11, 9), neon = Color.rgb(57, 255, 20), text = Color.WHITE, muted = Color.rgb(153, 165, 156);
+    private PackageManager pm;
+    private final ArrayList<ResolveInfo> all = new ArrayList<>(), shown = new ArrayList<>();
+    private GridView grid;
+    private AppsAdapter adapter;
+    private TextView clock, date;
+    private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("EEEE, d MMMM", new Locale("pt", "BR"));
 
-    @Override public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        getWindow().setStatusBarColor(Color.rgb(5, 12, 30));
-        getWindow().setNavigationBarColor(Color.rgb(5, 12, 30));
+    @Override public void onCreate(Bundle b) {
+        super.onCreate(b);
+        getWindow().setStatusBarColor(bg); getWindow().setNavigationBarColor(bg);
+        getWindow().getDecorView().setSystemUiVisibility(0);
+        pm = getPackageManager();
+        buildScreen(); loadApps(); updateTime();
+    }
 
-        ScrollView scroll = new ScrollView(this);
-        GradientDrawable bg = new GradientDrawable(
-            GradientDrawable.Orientation.TL_BR,
-            new int[]{Color.rgb(4, 10, 28), Color.rgb(10, 20, 55), Color.rgb(20, 5, 45)});
-        scroll.setBackground(bg);
-
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(20), dp(28), dp(20), dp(24));
-        scroll.addView(root);
-
-        TextView brand = new TextView(this);
-        brand.setText("BYTE VORTEX");
-        brand.setTextColor(cyan);
-        brand.setTextSize(30);
-        brand.setTypeface(Typeface.create("sans-serif-black", Typeface.BOLD));
-        brand.setGravity(Gravity.CENTER);
+    private void buildScreen() {
+        LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(dp(22), dp(26), dp(22), dp(12)); root.setBackgroundColor(bg);
+        LinearLayout brand = new LinearLayout(this); brand.setGravity(Gravity.CENTER_VERTICAL); brand.setOrientation(LinearLayout.HORIZONTAL);
+        TextView mark = new TextView(this); mark.setText("BV"); mark.setTextColor(bg); mark.setTextSize(18); mark.setTypeface(Typeface.DEFAULT, Typeface.BOLD); mark.setGravity(Gravity.CENTER);
+        GradientDrawable badge = new GradientDrawable(); badge.setColor(neon); badge.setCornerRadius(dp(14)); mark.setBackground(badge); brand.addView(mark, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        LinearLayout names = new LinearLayout(this); names.setOrientation(LinearLayout.VERTICAL); names.setPadding(dp(12),0,0,0);
+        TextView title = new TextView(this); title.setText("BYTE VORTEX"); title.setTextColor(text); title.setTextSize(19); title.setTypeface(Typeface.DEFAULT, Typeface.BOLD); names.addView(title);
+        TextView sub = new TextView(this); sub.setText("LAUNCHER  •  GAMING MODE"); sub.setTextColor(neon); sub.setTextSize(10); sub.setLetterSpacing(.12f); names.addView(sub);
+        brand.addView(names, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView settings = new TextView(this); settings.setText("⚙"); settings.setTextColor(neon); settings.setTextSize(24); settings.setGravity(Gravity.CENTER); settings.setOnClickListener(v -> { try { startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS)); } catch(Exception ignored){} }); brand.addView(settings, new LinearLayout.LayoutParams(dp(44), dp(48)));
         root.addView(brand);
-
-        TextView subtitle = new TextView(this);
-        subtitle.setText("EMULADORES  •  GAMING HUB");
-        subtitle.setTextColor(Color.WHITE);
-        subtitle.setTextSize(12);
-        subtitle.setLetterSpacing(0.18f);
-        subtitle.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, -2);
-        sp.setMargins(0, dp(4), 0, dp(24));
-        root.addView(subtitle, sp);
-
-        TextView section = new TextView(this);
-        section.setText("SEUS APLICATIVOS");
-        section.setTextColor(Color.WHITE);
-        section.setTextSize(15);
-        section.setTypeface(null, Typeface.BOLD);
-        root.addView(section);
-
-        appGrid = new LinearLayout(this);
-        appGrid.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-1, -2);
-        gp.setMargins(0, dp(12), 0, 0);
-        root.addView(appGrid, gp);
-
-        TextView footer = new TextView(this);
-        footer.setText("BYTE VORTEX  |  ANDROID EDITION");
-        footer.setTextColor(Color.LTGRAY);
-        footer.setTextSize(10);
-        footer.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(-1, -2);
-        fp.setMargins(0, dp(28), 0, dp(8));
-        root.addView(footer, fp);
-
-        setContentView(scroll);
-        loadApps();
+        clock = new TextView(this); clock.setTextColor(text); clock.setTextSize(48); clock.setTypeface(Typeface.DEFAULT, Typeface.BOLD); clock.setPadding(0, dp(34),0,0); root.addView(clock);
+        date = new TextView(this); date.setTextColor(muted); date.setTextSize(14); date.setPadding(0,0,0,dp(20)); root.addView(date);
+        EditText search = new EditText(this); search.setSingleLine(true); search.setTextColor(text); search.setHintTextColor(muted); search.setHint("⌕   Buscar aplicativos"); search.setTextSize(15); search.setPadding(dp(16),0,dp(16),0); search.setBackground(round(Color.rgb(22,28,23), dp(18))); root.addView(search, new LinearLayout.LayoutParams(-1, dp(52)));
+        TextView section = new TextView(this); section.setText("SEUS APLICATIVOS"); section.setTextColor(muted); section.setTextSize(11); section.setLetterSpacing(.14f); section.setPadding(dp(4), dp(22), 0, dp(10)); root.addView(section);
+        grid = new GridView(this); grid.setNumColumns(4); grid.setVerticalSpacing(dp(8)); grid.setHorizontalSpacing(dp(4)); grid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH); grid.setSelector(android.R.color.transparent); grid.setPadding(0,dp(4),0,0); root.addView(grid, new LinearLayout.LayoutParams(-1,0,1));
+        adapter = new AppsAdapter(); grid.setAdapter(adapter);
+        TextView footer = new TextView(this); footer.setText("BYTE VORTEX  •  SEU CELULAR, SEU UNIVERSO"); footer.setGravity(Gravity.CENTER); footer.setTextColor(Color.rgb(83,98,86)); footer.setTextSize(9); footer.setLetterSpacing(.08f); footer.setPadding(0,dp(8),0,dp(4)); root.addView(footer);
+        search.addTextChangedListener(new TextWatcher() { public void beforeTextChanged(CharSequence s,int st,int c,int a){} public void onTextChanged(CharSequence s,int st,int before,int count){ filter(s.toString()); } public void afterTextChanged(Editable e){} });
+        setContentView(root);
     }
 
     private void loadApps() {
-        appGrid.removeAllViews();
-        Intent query = new Intent(Intent.ACTION_MAIN, null);
-        query.addCategory(Intent.CATEGORY_LAUNCHER);
-        PackageManager pm = getPackageManager();
-        List<ResolveInfo> apps = pm.queryIntentActivities(query, 0);
-        Collections.sort(apps, new Comparator<ResolveInfo>() {
-            @Override public int compare(ResolveInfo a, ResolveInfo b) {
-                return a.loadLabel(pm).toString().compareToIgnoreCase(b.loadLabel(pm).toString());
-            }
-        });
+        all.clear(); Intent intent = new Intent(Intent.ACTION_MAIN, null); intent.addCategory(Intent.CATEGORY_LAUNCHER);
+        List<ResolveInfo> apps = pm.queryIntentActivities(intent, 0);
+        for (ResolveInfo r: apps) if (!r.activityInfo.packageName.equals(getPackageName())) all.add(r);
+        Collections.sort(all, (a,b) -> a.loadLabel(pm).toString().compareToIgnoreCase(b.loadLabel(pm).toString()));
+        shown.clear(); shown.addAll(all); if (adapter != null) adapter.notifyDataSetChanged();
+    }
+    private void filter(String q) { shown.clear(); for (ResolveInfo r: all) if (r.loadLabel(pm).toString().toLowerCase(new Locale("pt","BR")).contains(q.toLowerCase(new Locale("pt","BR")))) shown.add(r); adapter.notifyDataSetChanged(); }
+    private void updateTime() { clock.setText(timeFormat.format(new Date())); date.setText(dateFormat.format(new Date()).toUpperCase(new Locale("pt","BR"))); clock.postDelayed(new Runnable(){public void run(){updateTime();}}, 30000); }
+    private GradientDrawable round(int color,int radius) { GradientDrawable d=new GradientDrawable(); d.setColor(color); d.setCornerRadius(radius); return d; }
+    private int dp(float v) { return (int)(v*getResources().getDisplayMetrics().density+.5f); }
 
-        ArrayList<ResolveInfo> filtered = new ArrayList<>();
-        for (ResolveInfo info : apps) {
-            if (!info.activityInfo.packageName.equals(getPackageName())) filtered.add(info);
-        }
-
-        if (filtered.isEmpty()) {
-            TextView empty = new TextView(this);
-            empty.setText("Nenhum aplicativo encontrado.");
-            empty.setTextColor(Color.WHITE);
-            appGrid.addView(empty);
-            return;
-        }
-
-        for (int i = 0; i < filtered.size(); i += 3) {
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            for (int j = i; j < Math.min(i + 3, filtered.size()); j++) {
-                ResolveInfo info = filtered.get(j);
-                LinearLayout tile = new LinearLayout(this);
-                tile.setOrientation(LinearLayout.VERTICAL);
-                tile.setGravity(Gravity.CENTER);
-                tile.setPadding(dp(5), dp(12), dp(5), dp(12));
-                GradientDrawable shape = new GradientDrawable();
-                shape.setColor(Color.argb(90, 10, 35, 75));
-                shape.setCornerRadius(dp(16));
-                shape.setStroke(dp(1), Color.argb(180, 0, 210, 255));
-                tile.setBackground(shape);
-
-                ImageView icon = new ImageView(this);
-                try { icon.setImageDrawable(info.loadIcon(getPackageManager())); } catch (Exception ignored) {}
-                LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(42), dp(42));
-                tile.addView(icon, ip);
-
-                TextView name = new TextView(this);
-                name.setText(info.loadLabel(getPackageManager()));
-                name.setTextColor(Color.WHITE);
-                name.setTextSize(11);
-                name.setGravity(Gravity.CENTER);
-                name.setMaxLines(2);
-                LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-1, dp(34));
-                np.setMargins(0, dp(6), 0, 0);
-                tile.addView(name, np);
-
-                final String pkg = info.activityInfo.packageName;
-                tile.setOnClickListener(v -> {
-                    Intent launch = getPackageManager().getLaunchIntentForPackage(pkg);
-                    if (launch != null) startActivity(launch);
-                });
-                LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, dp(112), 1);
-                tp.setMargins(dp(4), dp(4), dp(4), dp(4));
-                row.addView(tile, tp);
-            }
-            while (row.getChildCount() < 3) {
-                View spacer = new View(this);
-                row.addView(spacer, new LinearLayout.LayoutParams(0, dp(112), 1));
-            }
-            appGrid.addView(row);
+    private class AppsAdapter extends BaseAdapter {
+        public int getCount(){return shown.size();} public Object getItem(int p){return shown.get(p);} public long getItemId(int p){return p;}
+        public View getView(int p, View recycled, ViewGroup parent) {
+            LinearLayout cell = new LinearLayout(MainActivity.this); cell.setOrientation(LinearLayout.VERTICAL); cell.setGravity(Gravity.CENTER); cell.setPadding(dp(3),dp(8),dp(3),dp(8));
+            ImageView icon = new ImageView(MainActivity.this); try { icon.setImageDrawable(shown.get(p).loadIcon(pm)); } catch(Exception ignored){}; cell.addView(icon,new LinearLayout.LayoutParams(dp(48),dp(48)));
+            TextView label = new TextView(MainActivity.this); label.setText(shown.get(p).loadLabel(pm)); label.setTextColor(text); label.setTextSize(11); label.setGravity(Gravity.CENTER); label.setMaxLines(2); label.setPadding(0,dp(6),0,0); cell.addView(label,new LinearLayout.LayoutParams(-1,dp(38)));
+            ResolveInfo app=shown.get(p); cell.setOnClickListener(v->{Intent launch=pm.getLaunchIntentForPackage(app.activityInfo.packageName); if(launch!=null) try {startActivity(launch);}catch(Exception ignored){} });
+            return cell;
         }
     }
-
-    @Override protected void onResume() { super.onResume(); if (appGrid != null) loadApps(); }
-    private int dp(float value) { return (int)(value * getResources().getDisplayMetrics().density + 0.5f); }
+    @Override protected void onResume(){ super.onResume(); if(pm!=null) loadApps(); }
 }
