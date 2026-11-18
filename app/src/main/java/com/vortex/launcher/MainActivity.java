@@ -1,4 +1,4 @@
-package com.byte.vortex.launcher;
+package com.vortex.launcher;
 
 import android.app.Activity;
 import android.os.Bundle;
